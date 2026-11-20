@@ -78,9 +78,4 @@ jobs:
           if-no-files-found: error
 
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: SOUND-CHECK-PRO-APK
-          path: extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+
