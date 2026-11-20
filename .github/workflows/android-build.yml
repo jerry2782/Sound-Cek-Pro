@@ -4,11 +4,10 @@ name: Build SOUND CHECK PRO APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   build:
@@ -17,19 +16,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Prepare Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          if [ -x "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          else
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager was not found in the GitHub runner Android SDK" >&2
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
-      - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Set up Gradle
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -37,10 +48,10 @@ jobs:
       - name: Extract Android project
         run: |
           unzip -q SOUND_CHECK_PRO_V3_CLOUD_BUILD.zip -d extracted
-          echo "PROJECT_DIR=$GITHUB_WORKSPACE/extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID" >> "$GITHUB_ENV"
+          test -f extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID/settings.gradle.kts
 
       - name: Build debug APK
-        run: gradle --no-daemon -p "$PROJECT_DIR" assembleDebug
+        run: gradle --no-daemon -p extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
