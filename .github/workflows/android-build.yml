@@ -45,13 +45,38 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      
       - name: Extract Android project
         run: |
-          unzip -q SOUND_CHECK_PRO_V3_CLOUD_BUILD.zip -d extracted
-          test -f extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID/settings.gradle.kts
+          echo "Daftar file ZIP di repository:"
+          find . -maxdepth 2 -type f -iname '*.zip'
+          ZIP_FILE="$(find . -maxdepth 2 -type f -iname '*.zip' -print -quit)"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ZIP project tidak ditemukan"
+            exit 1
+          fi
+          echo "Menggunakan: $ZIP_FILE"
+          unzip -q "$ZIP_FILE" -d extracted
+          find extracted -name settings.gradle.kts
 
+      
       - name: Build debug APK
-        run: gradle --no-daemon -p extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID assembleDebug
+        run: |
+          PROJECT_DIR="$(dirname "$(find extracted -name settings.gradle.kts -print -quit)")"
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Folder project Android tidak ditemukan"
+            exit 1
+          fi
+          echo "Project ditemukan: $PROJECT_DIR"
+          gradle --no-daemon -p "$PROJECT_DIR" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUND-CHECK-PRO-APK
+          path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
