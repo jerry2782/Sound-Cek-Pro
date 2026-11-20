@@ -1,0 +1,50 @@
+
+name: Build SOUND CHECK PRO APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Android project
+        run: |
+          unzip -q SOUND_CHECK_PRO_V3_CLOUD_BUILD.zip -d extracted
+          echo "PROJECT_DIR=$GITHUB_WORKSPACE/extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        run: gradle --no-daemon -p "$PROJECT_DIR" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUND-CHECK-PRO-APK
+          path: extracted/SOUND_CHECK_PRO_V3_ACTIVE_ANDROID/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
